@@ -25,7 +25,25 @@ export const Flights = () => {
     loadFlights();
   }, []);
 
-  // Filter flights when search term changes
+  /**
+   * Filter flights based on search term with support for advanced syntax.
+   *
+   * Supported search formats:
+   * - General search: Searches both origin and destination fields (e.g., "Mars")
+   * - Origin-specific: Use "from:" prefix (e.g., "from: Earth")
+   * - Destination-specific: Use "to:" prefix (e.g., "to: Mars")
+   * - Combined search: Use both prefixes (e.g., "from: Earth to: Mars")
+   *
+   * The search is case-insensitive and uses partial matching.
+   * Prefixes can be combined in any order and with flexible spacing.
+   *
+   * Examples:
+   * - "Mars" → matches flights with Mars in origin OR destination
+   * - "from: Earth" → matches flights departing from Earth
+   * - "to: Jupiter" → matches flights arriving at Jupiter
+   * - "from: Earth to: Mars" → matches flights from Earth to Mars
+   * - "to: Mars from: Earth" → same as above (order doesn't matter)
+   */
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredFlights(flights);
@@ -33,11 +51,31 @@ export const Flights = () => {
     }
 
     const term = searchTerm.toLowerCase();
-    const filtered = flights.filter(
-      (flight) =>
-        flight.origin.toLowerCase().includes(term) ||
-        flight.destination.toLowerCase().includes(term)
-    );
+
+    
+    // Check for 'from:' or 'to:' prefixes
+    const fromMatch = term.match(/from:\s*(.+?)(?:\s+to:|$)/);
+    const toMatch = term.match(/to:\s*(.+?)(?:\s+from:|$)/);
+    
+    let filtered = flights;
+    
+    if (fromMatch || toMatch) {
+      // Specific origin/destination search
+      filtered = flights.filter((flight) => {
+        const matchesFrom = !fromMatch || flight.origin.toLowerCase().includes(fromMatch[1].trim());
+        const matchesTo = !toMatch || flight.destination.toLowerCase().includes(toMatch[1].trim());
+        return matchesFrom && matchesTo;
+      });
+    } else {
+      // General search across both fields
+      filtered = flights.filter(
+        (flight) =>
+          flight.origin.toLowerCase().includes(term) ||
+          flight.destination.toLowerCase().includes(term)
+      );
+    }
+    
+
     setFilteredFlights(filtered);
   }, [searchTerm, flights]);
 
@@ -106,7 +144,7 @@ export const Flights = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-star-white/50" size={20} />
             <input
               type="text"
-              placeholder="Search by origin or destination..."
+              placeholder="Search by origin or destination (e.g., 'from: Earth to: Mars')..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-star-white placeholder-star-white/50 focus:outline-none focus:ring-2 focus:ring-cosmic-purple"
